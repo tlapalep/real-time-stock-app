@@ -129,6 +129,10 @@ The project consists of the following services:
 ## Author
 - Tomas Tlapale Pulido
 
+## Note
+- The GitHub user **EfrainTlapale** belongs to my brother, whose computer I used for this project. However, the code was developed entirely by me.
+
+
 ---
 
 ## License
