@@ -1,45 +1,36 @@
 import React, { useState, useEffect } from "react";
 
 function TradingPanel() {
-  // Estados locales para saldo, acciones y precio actual
-  const [balance, setBalance] = useState(10000);
-  const [shares, setShares] = useState(0);
-  const [currentPrice, setCurrentPrice] = useState(150);
+  const [balance, setBalance] = useState(10000); // User's balance in USD
+  const [shares, setShares] = useState(0); // Number of shares owned
+  const [currentPrice, setCurrentPrice] = useState(150); // Current stock price
+  const [tradeAmount, setTradeAmount] = useState(1); // Amount to buy/sell
+  const [message, setMessage] = useState(""); // Success/error messages
 
-  // Estado para la cantidad a comprar/vender
-  const [tradeAmount, setTradeAmount] = useState(1);
-
-  // Estado para manejar mensajes de error o confirmación
-  const [message, setMessage] = useState("");
-
-  // Efecto para obtener datos iniciales (precio actual, saldo, acciones) desde el backend
+  // Fetch initial data (current price)
   useEffect(() => {
     fetch("/api/stock/info")
       .then((res) => res.json())
       .then((data) => {
-        // data = { symbol: 'AAPL', price: 150 }
         setCurrentPrice(data.price);
       })
-      .catch((error) => console.error(error));
-    // Podrías también llamar a otro endpoint para obtener balance y shares iniciales
+      .catch((error) => console.error("Error fetching stock info:", error));
   }, []);
 
-  // Actualización optimista de compra
+  // Optimistic Buy
   const handleBuy = () => {
     const totalCost = currentPrice * tradeAmount;
 
-    // Verificamos si hay fondos suficientes localmente
     if (balance < totalCost) {
-      setMessage("Fondos insuficientes para comprar.");
+      setMessage("Insufficient funds to buy.");
       return;
     }
 
-    // 1. Actualiza UI de manera optimista
+    // Optimistic UI update
     setBalance((prev) => prev - totalCost);
     setShares((prev) => prev + tradeAmount);
-    setMessage(`Compraste ${tradeAmount} acciones.`);
+    setMessage(`You bought ${tradeAmount} shares.`);
 
-    // 2. Envía la petición al backend
     fetch("/api/trades", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -47,44 +38,42 @@ function TradingPanel() {
     })
       .then((res) => {
         if (!res.ok) {
-          // Si hay un error en el servidor, revertimos cambios
+          // Revert changes on server error
           return res.json().then((err) => {
             setBalance((prev) => prev + totalCost);
             setShares((prev) => prev - tradeAmount);
-            setMessage(err.message || "Ocurrió un error al comprar.");
+            setMessage(err.message || "Error occurred while buying.");
           });
         } else {
           return res.json().then((data) => {
-            // data = { success: true, balance, shares }
             setBalance(data.balance);
             setShares(data.shares);
           });
         }
       })
       .catch((error) => {
-        // Manejo de error de red
+        // Handle network error
         setBalance((prev) => prev + totalCost);
         setShares((prev) => prev - tradeAmount);
-        setMessage("Error de red al comprar.");
+        setMessage("Network error while buying.");
         console.error(error);
       });
   };
 
-  // Actualización optimista de venta
+  // Optimistic Sell
   const handleSell = () => {
-    // Verificar si el usuario tiene suficientes acciones
     if (shares < tradeAmount) {
-      setMessage("No tienes suficientes acciones para vender.");
+      setMessage("You do not have enough shares to sell.");
       return;
     }
 
-    // 1. Actualiza UI de manera optimista
     const totalRevenue = currentPrice * tradeAmount;
+
+    // Optimistic UI update
     setBalance((prev) => prev + totalRevenue);
     setShares((prev) => prev - tradeAmount);
-    setMessage(`Vendiste ${tradeAmount} acciones.`);
+    setMessage(`You sold ${tradeAmount} shares.`);
 
-    // 2. Envía la petición al backend
     fetch("/api/trades", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,25 +81,24 @@ function TradingPanel() {
     })
       .then((res) => {
         if (!res.ok) {
-          // Si hay un error en el servidor, revertimos cambios
+          // Revert changes on server error
           return res.json().then((err) => {
             setBalance((prev) => prev - totalRevenue);
             setShares((prev) => prev + tradeAmount);
-            setMessage(err.message || "Ocurrió un error al vender.");
+            setMessage(err.message || "Error occurred while selling.");
           });
         } else {
           return res.json().then((data) => {
-            // data = { success: true, balance, shares }
             setBalance(data.balance);
             setShares(data.shares);
           });
         }
       })
       .catch((error) => {
-        // Manejo de error de red
+        // Handle network error
         setBalance((prev) => prev - totalRevenue);
         setShares((prev) => prev + tradeAmount);
-        setMessage("Error de red al vender.");
+        setMessage("Network error while selling.");
         console.error(error);
       });
   };
@@ -118,12 +106,12 @@ function TradingPanel() {
   return (
     <div style={styles.panel}>
       <h2>Trading Panel</h2>
-      <p>Balance: ${balance}</p>
+      <p>Balance: ${balance.toFixed(2)}</p>
       <p>Shares Held: {shares}</p>
-      <p>Current Price: ${currentPrice}</p>
+      <p>Current Price: ${currentPrice.toFixed(2)}</p>
 
       <div>
-        <label>Cantidad: </label>
+        <label>Amount: </label>
         <input
           type="number"
           min="1"
@@ -149,6 +137,7 @@ const styles = {
     padding: "16px",
     maxWidth: "300px",
     margin: "16px auto",
+    fontFamily: "Arial, sans-serif",
   },
   buttons: {
     display: "flex",
